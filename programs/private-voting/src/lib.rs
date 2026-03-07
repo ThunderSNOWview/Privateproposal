@@ -24,6 +24,11 @@ const VOTER_CREDITS_SEED: &[u8] = b"voter_credits";
 /// 100 credits → max 10 votes on one proposal (10² = 100).
 const DEFAULT_CREDITS: u64 = 100;
 
+/// Credits added per top-up call (restores one full allocation).
+const TOP_UP_AMOUNT: u64 = 100;
+/// Minimum seconds between top-up calls per voter.
+const TOP_UP_COOLDOWN_SECS: i64 = 86_400;
+
 // ---------------------------------------------------------------------------
 // Program
 // ---------------------------------------------------------------------------
@@ -59,7 +64,23 @@ pub mod private_voting {
         let vc = &mut ctx.accounts.voter_credits;
         vc.voter = ctx.accounts.voter.key();
         vc.credits = DEFAULT_CREDITS;
+        vc.last_top_up = 0;
         vc.bump = ctx.bumps.voter_credits;
+        Ok(())
+    }
+
+    /// Refill voting credits. Can be called once per 24 h per voter.
+    pub fn top_up_credits(ctx: Context<TopUpCredits>) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+        let vc = &mut ctx.accounts.voter_credits;
+        if vc.last_top_up > 0 {
+            require!(
+                now >= vc.last_top_up + TOP_UP_COOLDOWN_SECS,
+                ErrorCode::CooldownNotElapsed
+            );
+        }
+        vc.credits = vc.credits.saturating_add(TOP_UP_AMOUNT);
+        vc.last_top_up = now;
         Ok(())
     }
 
@@ -158,6 +179,7 @@ pub mod private_voting {
             ctx.accounts.proposal.status == ProposalStatus::Active,
             ErrorCode::InvalidProposalStatus
         );
+        require!(!ctx.accounts.proposal.vote_in_flight, ErrorCode::VoteInFlight);
         require!(
             Clock::get()?.unix_timestamp < ctx.accounts.proposal.end_time,
             ErrorCode::ProposalEnded
@@ -177,6 +199,7 @@ pub mod private_voting {
         ctx.accounts.voter_record.weight = num_votes;
         ctx.accounts.voter_record.bump = ctx.bumps.voter_record;
 
+        ctx.accounts.proposal.vote_in_flight = true;
         ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
 
         let args = ArgBuilder::new()
@@ -218,6 +241,7 @@ pub mod private_voting {
         proposal.running_tally_ciphertext = o.ciphertexts[0];
         proposal.running_tally_nonce = o.nonce;
         proposal.vote_count += 1;
+        proposal.vote_in_flight = false;
 
         emit!(VoteCast { proposal: proposal.key(), vote_count: proposal.vote_count });
         Ok(())
@@ -621,6 +645,18 @@ pub struct RegisterVoter<'info> {
 }
 
 #[derive(Accounts)]
+pub struct TopUpCredits<'info> {
+    #[account(mut)]
+    pub voter: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [VOTER_CREDITS_SEED, voter.key().as_ref()],
+        bump = voter_credits.bump,
+    )]
+    pub voter_credits: Account<'info, VoterCredits>,
+}
+
+#[derive(Accounts)]
 #[instruction(proposal_nonce: u64)]
 pub struct CreateProposal<'info> {
     #[account(mut)]
@@ -652,21 +688,23 @@ pub struct Proposal {
     pub running_tally_nonce: u128,
     pub result: Option<i64>,
     pub status: ProposalStatus,
+    pub vote_in_flight: bool,
     pub bump: u8,
 }
 
 impl Proposal {
-    pub const MAX_SPACE: usize = 8 + 32 + 8 + (4 + MAX_TITLE_LEN) + (4 + MAX_DESC_LEN) + 8 + 4 + 32 + 16 + 9 + 1 + 1;
+    pub const MAX_SPACE: usize = 8 + 32 + 8 + (4 + MAX_TITLE_LEN) + (4 + MAX_DESC_LEN) + 8 + 4 + 32 + 16 + 9 + 1 + 1 + 1;
 }
 
 #[account]
 pub struct VoterCredits {
     pub voter: Pubkey,
     pub credits: u64,
+    pub last_top_up: i64,
     pub bump: u8,
 }
 impl VoterCredits {
-    pub const SPACE: usize = 8 + 32 + 8 + 1;
+    pub const SPACE: usize = 8 + 32 + 8 + 8 + 1; // 57
 }
 
 #[account]
@@ -742,4 +780,8 @@ pub enum ErrorCode {
     CreditOverflow,
     #[msg("Insufficient voting credits (need num_votes² credits)")]
     InsufficientCredits,
+    #[msg("A vote computation is already in flight for this proposal")]
+    VoteInFlight,
+    #[msg("Credit top-up cooldown has not elapsed (24 h between top-ups)")]
+    CooldownNotElapsed,
 }

@@ -10,26 +10,40 @@ import { useVoterCredits } from './hooks/useVoterCredits'
 import { useVotedProposals } from './hooks/useVotedProposals'
 import { getVoterCreditsPda } from './lib/pdas'
 
-function CreditBar({ credits, onRegister, loading }: {
+function CreditBar({ credits, onRegister, onTopUp, topUpLoading, loading }: {
   credits: number | null
   onRegister: () => void
+  onTopUp: () => void
+  topUpLoading: boolean
   loading: boolean
 }) {
   const maxCredits = 100
   const pct = credits !== null ? Math.round((credits / maxCredits) * 100) : 0
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
       {credits !== null ? (
-        <div className="flex items-center gap-2">
-          <div className="hidden sm:block w-24 h-1.5 rounded-full bg-white/10 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-doma-blue transition-all"
-              style={{ width: `${pct}%` }}
-            />
+        <>
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:block w-24 h-1.5 rounded-full bg-white/10 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-doma-blue transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="text-xs font-mono text-doma-blue font-medium">{credits} credits</span>
           </div>
-          <span className="text-xs font-mono text-doma-blue font-medium">{credits} credits</span>
-        </div>
+          {credits < 25 && (
+            <button
+              onClick={onTopUp}
+              disabled={topUpLoading}
+              title="Refill 100 credits (once per 24 h)"
+              className="px-2 py-1 rounded-[10px] text-xs font-medium bg-doma-blue/10 hover:bg-doma-blue/20 border border-doma-blue/30 text-doma-blue transition-colors disabled:opacity-50"
+            >
+              {topUpLoading ? '…' : '+ Top Up'}
+            </button>
+          )}
+        </>
       ) : (
         <button
           onClick={onRegister}
@@ -53,6 +67,7 @@ export function App() {
   )
   const [showCreate, setShowCreate] = useState(false)
   const [registerLoading, setRegisterLoading] = useState(false)
+  const [topUpLoading, setTopUpLoading] = useState(false)
   const [activeFilter, setActiveFilter] = useState<'active' | 'mine' | 'voted' | 'ended'>('active')
   const [page, setPage] = useState(0)
   const PAGE_SIZE = 9
@@ -62,6 +77,26 @@ export function App() {
     publicKey,
     proposals
   )
+
+  async function handleTopUp() {
+    if (!ctx || !publicKey) return
+    setTopUpLoading(true)
+    try {
+      const [vcPda] = getVoterCreditsPda(publicKey)
+      await ctx.program.methods
+        .topUpCredits()
+        .accountsPartial({
+          voter: publicKey,
+          voterCredits: vcPda,
+        })
+        .rpc({ commitment: 'confirmed', skipPreflight: true })
+      await refetchCredits()
+    } catch (e) {
+      console.error('Top-up failed:', e)
+    } finally {
+      setTopUpLoading(false)
+    }
+  }
 
   async function handleRegister() {
     if (!ctx || !publicKey) return
@@ -104,6 +139,8 @@ export function App() {
               <CreditBar
                 credits={credits}
                 onRegister={handleRegister}
+                onTopUp={handleTopUp}
+                topUpLoading={topUpLoading}
                 loading={registerLoading || loadingCredits}
               />
             )}

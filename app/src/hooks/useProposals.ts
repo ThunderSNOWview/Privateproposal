@@ -57,5 +57,16 @@ export function useProposals(program: VotingProgram | null) {
     fetchProposals()
   }, [fetchProposals])
 
+  // Auto-refresh every 8 s while any proposal is pending MPC finalization
+  useEffect(() => {
+    const hasPending = proposals.some(p => {
+      const s = Object.keys(p.account.status)[0]
+      return s === 'initializing' || s === 'closed'
+    })
+    if (!hasPending) return
+    const id = setInterval(fetchProposals, 8_000)
+    return () => clearInterval(id)
+  }, [proposals, fetchProposals])
+
   return { proposals, loading, refetch: fetchProposals }
 }

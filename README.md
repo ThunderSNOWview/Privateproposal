@@ -202,6 +202,27 @@ private-voting/
 
 ---
 
+## Security Design
+
+### Concurrent vote guard (`vote_in_flight`)
+
+Arcium MPC computations are asynchronous — the callback arrives in a later transaction. Without a guard, two simultaneous `cast_vote` calls would both read the same stale `running_tally_ciphertext`; whichever callback lands second silently overwrites the first, losing a vote.
+
+A `vote_in_flight: bool` flag on the proposal prevents this: the second voter gets `VoteInFlight` and must retry after the first callback clears the flag.
+
+### Direction clamping in the circuit
+
+The `add_vote` circuit uses `w * (2 * direction - 1)` to compute the contribution (`+w` for For, `-w` for Against). Without clamping, a voter who crafts a ciphertext that decrypts to `2` would inject `3w` instead of `w`.
+
+The circuit clamps `new_vote` to `{0, 1}` before the formula runs:
+```rust
+let direction = if new_vote.to_arcis() >= 1u8 { 1i64 } else { 0i64 };
+```
+
+This is still branchless (both arms compute under encryption), so no voting information leaks.
+
+---
+
 ## Why Arcium?
 
 Traditional ZK-based private voting requires voters to generate proofs locally (expensive, complex tooling). Arcium's MPC approach:

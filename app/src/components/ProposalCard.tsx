@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { AnchorProvider } from '@coral-xyz/anchor'
 import BN from 'bn.js'
@@ -32,12 +32,20 @@ export function ProposalCard({ proposal, program, provider, currentCredits, hasV
   const [showVoteModal, setShowVoteModal] = useState(false)
   const [closing, setClosing] = useState(false)
   const [closeError, setCloseError] = useState('')
+  const [, setTick] = useState(0)
 
   const { account } = proposal
   const statusKey = Object.keys(account.status)[0]
   const endTimeSecs = account.endTime.toNumber()
   const now = Math.floor(Date.now() / 1000)
   const isExpired = now >= endTimeSecs
+
+  // Live countdown — re-render every minute while proposal is active
+  useEffect(() => {
+    if (statusKey !== 'active' || isExpired) return
+    const id = setInterval(() => setTick(t => t + 1), 60_000)
+    return () => clearInterval(id)
+  }, [statusKey, isExpired])
   const canVote = statusKey === 'active' && !isExpired && !hasVoted && currentCredits !== null && currentCredits >= 1
   const canClose = statusKey === 'active' && isExpired
 
@@ -117,7 +125,7 @@ export function ProposalCard({ proposal, program, provider, currentCredits, hasV
           <div className="flex items-center gap-3 text-xs text-white/40">
             <span className="flex items-center gap-1">
               <span>🗳️</span>
-              <span>{account.voteCount} vote{account.voteCount !== 1 ? 's' : ''}</span>
+              <span>{account.voteCount} voter{account.voteCount !== 1 ? 's' : ''}</span>
             </span>
             <span className="flex items-center gap-1">
               <span>⏱️</span>
@@ -148,7 +156,7 @@ export function ProposalCard({ proposal, program, provider, currentCredits, hasV
               ✓ Voted
             </span>
           )}
-          {!hasVoted && statusKey === 'active' && isExpired && canClose && (
+          {statusKey === 'active' && isExpired && canClose && (
             <button
               onClick={handleClose}
               disabled={closing}

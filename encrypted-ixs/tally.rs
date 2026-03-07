@@ -48,7 +48,9 @@ mod circuits {
         weight: u64,               // plaintext: number of votes allocated (public)
     ) -> Enc<Mxe, i64> {
         let tally = running_tally.to_arcis();
-        let direction = new_vote.to_arcis() as i64;
+        // Clamp to {0, 1}: any value ≥ 1 is treated as For, 0 as Against.
+        // Prevents direction=2 (or any invalid value) from yielding 3w instead of w.
+        let direction = if new_vote.to_arcis() >= 1u8 { 1i64 } else { 0i64 };
         let w = weight as i64;
 
         // direction=1 → contribution = +w (For)

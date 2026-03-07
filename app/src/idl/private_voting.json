@@ -866,6 +866,60 @@
       ]
     },
     {
+      "name": "top_up_credits",
+      "docs": [
+        "Refill voting credits. Can be called once per 24 h per voter."
+      ],
+      "discriminator": [
+        233,
+        69,
+        157,
+        187,
+        238,
+        161,
+        1,
+        76
+      ],
+      "accounts": [
+        {
+          "name": "voter",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "voter_credits",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  116,
+                  101,
+                  114,
+                  95,
+                  99,
+                  114,
+                  101,
+                  100,
+                  105,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "voter"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "zero_tally",
       "docs": [
         "Queue MPC to produce Enc<Mxe, 0i64> — the seed running tally."
@@ -1186,6 +1240,16 @@
       "code": 6010,
       "name": "InsufficientCredits",
       "msg": "Insufficient voting credits (need num_votes² credits)"
+    },
+    {
+      "code": 6011,
+      "name": "VoteInFlight",
+      "msg": "A vote computation is already in flight for this proposal"
+    },
+    {
+      "code": 6012,
+      "name": "CooldownNotElapsed",
+      "msg": "Credit top-up cooldown has not elapsed (24 h between top-ups)"
     }
   ],
   "types": [
@@ -2004,6 +2068,10 @@
             }
           },
           {
+            "name": "vote_in_flight",
+            "type": "bool"
+          },
+          {
             "name": "bump",
             "type": "u8"
           }
@@ -2239,6 +2307,10 @@
           {
             "name": "credits",
             "type": "u64"
+          },
+          {
+            "name": "last_top_up",
+            "type": "i64"
           },
           {
             "name": "bump",
