@@ -40,7 +40,10 @@ export function useProposals(program: VotingProgram | null) {
       const sorted = (all as ProposalAccount[]).sort((a, b) => {
         const aKey = Object.keys(a.account.status)[0]
         const bKey = Object.keys(b.account.status)[0]
-        return (STATUS_ORDER[aKey] ?? 9) - (STATUS_ORDER[bKey] ?? 9)
+        const statusDiff = (STATUS_ORDER[aKey] ?? 9) - (STATUS_ORDER[bKey] ?? 9)
+        if (statusDiff !== 0) return statusDiff
+        // Within same status: newest end time first
+        return b.account.endTime.toNumber() - a.account.endTime.toNumber()
       })
       setProposals(sorted)
     } catch (e) {
