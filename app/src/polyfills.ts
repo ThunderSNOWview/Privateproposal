@@ -1,6 +1,8 @@
 import { Buffer } from 'buffer'
-// Make Buffer globally available (needed by @solana/web3.js and @coral-xyz/anchor)
+import process from 'process'
+
 if (typeof window !== 'undefined') {
   ;(window as any).Buffer = Buffer
   ;(window as any).global = window
+  ;(window as any).process = process
 }

@@ -11,6 +11,7 @@
  */
 
 import * as anchor from "@coral-xyz/anchor";
+console.log(">>> INITIALIZATION SCRIPT STARTED <<<");
 import { Program } from "@coral-xyz/anchor";
 import * as fs from "fs";
 import {
@@ -53,7 +54,7 @@ async function initCompDef(
   } else {
     const lutAddress = await getLutAddress();
     await (program.methods as any)
-      [methodName]()
+    [methodName]()
       .accounts({
         payer: provider.wallet.publicKey,
         mxeAccount: getMXEAccAddress(program.programId),
@@ -65,18 +66,25 @@ async function initCompDef(
   }
 
   const rawCircuit = fs.readFileSync(`build/${name}.arcis`);
-  try {
-    await uploadCircuit(provider, name, program.programId, rawCircuit, true, 5, {
-      skipPreflight: true,
-      commitment: "confirmed",
-    });
-  } catch (e: any) {
-    const logs = e?.transactionLogs ?? e?.logs ?? null;
-    console.error(`  uploadCircuit failed for ${name}:`, e?.transactionMessage ?? e?.message ?? e);
-    if (logs) console.error("  Logs:", logs);
-    throw e;
+  let retries = 5;
+  while (retries > 0) {
+    try {
+      await uploadCircuit(provider, name, program.programId, rawCircuit, true, 5, {
+        skipPreflight: true,
+        commitment: "confirmed",
+      });
+      console.log(`  ✓ ${name} circuit uploaded`);
+      return;
+    } catch (e: any) {
+      retries--;
+      const logs = e?.transactionLogs ?? e?.logs ?? null;
+      console.error(`  uploadCircuit failed for ${name} (retries left: ${retries}):`, e?.transactionMessage ?? e?.message ?? e);
+      if (logs) console.error("  Logs:", logs);
+      if (retries === 0) throw e;
+      console.log(`  Retrying in 5 seconds...`);
+      await new Promise(r => setTimeout(r, 5000));
+    }
   }
-  console.log(`  ✓ ${name} circuit uploaded`);
 }
 
 async function main() {

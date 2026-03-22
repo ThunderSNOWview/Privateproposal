@@ -3,8 +3,8 @@ import { PublicKey } from '@solana/web3.js'
 import { getVoterCreditsPda } from '../lib/pdas'
 import type { VotingProgram } from './useProgram'
 
-export function useVoterCredits(program: VotingProgram | null, voter: PublicKey | null) {
-  const [credits, setCredits] = useState<number | null>(null)
+export function useVoterPower(program: VotingProgram | null, voter: PublicKey | null) {
+  const [power, setPower] = useState<number | null>(null)
   const [registered, setRegistered] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -20,18 +20,18 @@ export function useVoterCredits(program: VotingProgram | null, voter: PublicKey 
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const acc = await (program.account as any).voterCredits.fetch(pda)
-        setCredits((acc.credits as { toNumber(): number }).toNumber())
+        setPower((acc.credits as { toNumber(): number }).toNumber())
       } catch {
         // Raw fallback: discriminator(8) + voter pubkey(32) + credits(u64 LE) = bytes 40–47
         const info = await program.provider.connection.getAccountInfo(pda)
         if (!info) throw new Error('Account not found')
-        const credits = Number(info.data.readBigUInt64LE(40))
-        setCredits(credits)
+        const power = Number(info.data.readBigUInt64LE(40))
+        setPower(power)
       }
       setRegistered(true)
     } catch {
       setRegistered(false)
-      setCredits(null)
+      setPower(null)
     } finally {
       setLoading(false)
     }
@@ -41,5 +41,5 @@ export function useVoterCredits(program: VotingProgram | null, voter: PublicKey 
     refetch()
   }, [refetch])
 
-  return { credits, registered, loading, refetch }
+  return { power, registered, loading, refetch }
 }

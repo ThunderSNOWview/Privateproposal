@@ -13,7 +13,16 @@ export default defineConfig({
     'process.env.NODE_DEBUG': JSON.stringify(false),
   },
   optimizeDeps: {
-    include: ['@coral-xyz/anchor', '@solana/web3.js', 'bn.js'],
+    include: [
+      '@coral-xyz/anchor', 
+      '@solana/web3.js', 
+      'bn.js', 
+      'buffer', 
+      'process',
+      'readable-stream',
+      'hash-base',
+      'create-hash'
+    ],
   },
   server: {
     port: 3000,

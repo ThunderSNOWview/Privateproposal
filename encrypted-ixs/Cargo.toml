@@ -7,4 +7,4 @@ edition = "2021"
 path = "tally.rs"
 
 [dependencies]
-arcis = "0.8.5"
+arcis = "0.9.2"

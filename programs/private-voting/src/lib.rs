@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use arcium_anchor::prelude::*;
 use arcium_client::idl::arcium::types::CallbackAccount;
 
-declare_id!("CLUBgAStu51VNK9BWaDujZYvrM55MAmfq7CLZ3KY3mmD");
+declare_id!("4QtJkVtnkWuC49MV3ggQ3gFxLQY3be9KbEhAq8DdV7yx");
 
 // ---------------------------------------------------------------------------
 // Computation definition offsets
@@ -163,10 +163,6 @@ pub mod private_voting {
     }
 
     /// Cast an encrypted vote with quadratic credit deduction.
-    ///
-    /// The voter chooses `num_votes` (weight). The quadratic cost `num_votes²`
-    /// is deducted on-chain before MPC runs. The vote direction (1=For, 0=Against)
-    /// is encrypted so only the MPC cluster can see it.
     pub fn cast_vote(
         ctx: Context<CastVote>,
         computation_offset: u64,
@@ -279,32 +275,7 @@ pub mod private_voting {
         Ok(())
     }
 
-    /// Re-queue reveal_tally for a proposal stuck in Closed (e.g. nodes were down).
-    pub fn retry_reveal_tally(ctx: Context<RetryRevealTally>, computation_offset: u64) -> Result<()> {
-        require!(
-            ctx.accounts.proposal.status == ProposalStatus::Closed,
-            ErrorCode::InvalidProposalStatus
-        );
 
-        ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
-
-        let tally_nonce = ctx.accounts.proposal.running_tally_nonce;
-        let tally_ct = ctx.accounts.proposal.running_tally_ciphertext;
-
-        let args = ArgBuilder::new().plaintext_u128(tally_nonce).encrypted_u8(tally_ct).build();
-
-        let callback_ix = RevealTallyCallback::callback_ix(
-            computation_offset,
-            &ctx.accounts.mxe_account,
-            &[CallbackAccount {
-                pubkey: ctx.accounts.proposal.key(),
-                is_writable: true,
-            }],
-        )?;
-        queue_computation(ctx.accounts, computation_offset, args, vec![callback_ix], 1, 0)?;
-
-        Ok(())
-    }
 
     /// Callback: store revealed tally and finalize proposal.
     #[arcium_callback(encrypted_ix = "reveal_tally")]
@@ -334,7 +305,7 @@ pub mod private_voting {
 }
 
 // ---------------------------------------------------------------------------
-// Account structs — comp def init (uses arcium macro)
+// Account structs
 // ---------------------------------------------------------------------------
 
 #[init_computation_definition_accounts("init_tally", payer)]
@@ -351,7 +322,7 @@ pub struct InitZeroTallyCompDef<'info> {
     /// CHECK: address_lookup_table, checked by arcium program.
     pub address_lookup_table: UncheckedAccount<'info>,
     #[account(address = LUT_PROGRAM_ID)]
-    /// CHECK: lut_program is the Address Lookup Table program.
+    /// CHECK: lut_program
     pub lut_program: UncheckedAccount<'info>,
     pub arcium_program: Program<'info, Arcium>,
     pub system_program: Program<'info, System>,
@@ -371,7 +342,7 @@ pub struct InitAddVoteCompDef<'info> {
     /// CHECK: address_lookup_table, checked by arcium program.
     pub address_lookup_table: UncheckedAccount<'info>,
     #[account(address = LUT_PROGRAM_ID)]
-    /// CHECK: lut_program is the Address Lookup Table program.
+    /// CHECK: lut_program
     pub lut_program: UncheckedAccount<'info>,
     pub arcium_program: Program<'info, Arcium>,
     pub system_program: Program<'info, System>,
@@ -391,15 +362,11 @@ pub struct InitRevealTallyCompDef<'info> {
     /// CHECK: address_lookup_table, checked by arcium program.
     pub address_lookup_table: UncheckedAccount<'info>,
     #[account(address = LUT_PROGRAM_ID)]
-    /// CHECK: lut_program is the Address Lookup Table program.
+    /// CHECK: lut_program
     pub lut_program: UncheckedAccount<'info>,
     pub arcium_program: Program<'info, Arcium>,
     pub system_program: Program<'info, System>,
 }
-
-// ---------------------------------------------------------------------------
-// Account structs — queue computation
-// ---------------------------------------------------------------------------
 
 #[queue_computation_accounts("init_tally", payer)]
 #[derive(Accounts)]
@@ -414,7 +381,7 @@ pub struct ZeroTally<'info> {
     )]
     pub sign_pda_account: Account<'info, ArciumSignerAccount>,
     #[account(address = derive_mxe_pda!())]
-    pub mxe_account: Account<'info, MXEAccount>,
+    pub mxe_account: Box<Account<'info, MXEAccount>>,
     #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
     /// CHECK: checked by arcium program
     pub mempool_account: UncheckedAccount<'info>,
@@ -427,13 +394,13 @@ pub struct ZeroTally<'info> {
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_ZERO_TALLY))]
     pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
     #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    pub cluster_account: Account<'info, Cluster>,
+    pub cluster_account: Box<Account<'info, Cluster>>,
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
-    pub pool_account: Account<'info, FeePool>,
+    pub pool_account: Box<Account<'info, FeePool>>,
     #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
-    pub clock_account: Account<'info, ClockAccount>,
+    pub clock_account: Box<Account<'info, ClockAccount>>,
     #[account(mut)]
-    pub proposal: Account<'info, Proposal>,
+    pub proposal: Box<Account<'info, Proposal>>,
     pub system_program: Program<'info, System>,
     pub arcium_program: Program<'info, Arcium>,
 }
@@ -449,15 +416,13 @@ pub struct InitTallyCallback<'info> {
     /// CHECK: checked by arcium program
     pub computation_account: UncheckedAccount<'info>,
     #[account(address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    pub cluster_account: Account<'info, Cluster>,
+    pub cluster_account: Box<Account<'info, Cluster>>,
     #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
     /// CHECK: instructions sysvar
     pub instructions_sysvar: AccountInfo<'info>,
     #[account(mut)]
-    pub proposal: Account<'info, Proposal>,
+    pub proposal: Box<Account<'info, Proposal>>,
 }
-
-// ---------------------------------------------------------------------------
 
 #[queue_computation_accounts("add_vote", payer)]
 #[derive(Accounts)]
@@ -472,7 +437,7 @@ pub struct CastVote<'info> {
     )]
     pub sign_pda_account: Account<'info, ArciumSignerAccount>,
     #[account(address = derive_mxe_pda!())]
-    pub mxe_account: Account<'info, MXEAccount>,
+    pub mxe_account: Box<Account<'info, MXEAccount>>,
     #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
     /// CHECK: checked by arcium program
     pub mempool_account: UncheckedAccount<'info>,
@@ -498,7 +463,6 @@ pub struct CastVote<'info> {
         bump = voter_credits.bump,
     )]
     pub voter_credits: Box<Account<'info, VoterCredits>>,
-    /// PDA uniqueness = double-vote prevention
     #[account(
         init,
         payer = payer,
@@ -522,52 +486,15 @@ pub struct AddVoteCallback<'info> {
     /// CHECK: checked by arcium program
     pub computation_account: UncheckedAccount<'info>,
     #[account(address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    pub cluster_account: Account<'info, Cluster>,
+    pub cluster_account: Box<Account<'info, Cluster>>,
     #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
     /// CHECK: instructions sysvar
     pub instructions_sysvar: AccountInfo<'info>,
     #[account(mut)]
-    pub proposal: Account<'info, Proposal>,
+    pub proposal: Box<Account<'info, Proposal>>,
 }
 
-// ---------------------------------------------------------------------------
 
-#[queue_computation_accounts("reveal_tally", payer)]
-#[derive(Accounts)]
-#[instruction(computation_offset: u64)]
-pub struct RetryRevealTally<'info> {
-    #[account(mut)]
-    pub payer: Signer<'info>,
-    #[account(
-        init_if_needed, space = 9, payer = payer,
-        seeds = [&SIGN_PDA_SEED], bump,
-        address = derive_sign_pda!(),
-    )]
-    pub sign_pda_account: Account<'info, ArciumSignerAccount>,
-    #[account(address = derive_mxe_pda!())]
-    pub mxe_account: Account<'info, MXEAccount>,
-    #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    /// CHECK: checked by arcium program
-    pub mempool_account: UncheckedAccount<'info>,
-    #[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    /// CHECK: checked by arcium program
-    pub executing_pool: UncheckedAccount<'info>,
-    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
-    /// CHECK: checked by arcium program
-    pub computation_account: UncheckedAccount<'info>,
-    #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_REVEAL_TALLY))]
-    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
-    #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    pub cluster_account: Account<'info, Cluster>,
-    #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
-    pub pool_account: Account<'info, FeePool>,
-    #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
-    pub clock_account: Account<'info, ClockAccount>,
-    #[account(mut)]
-    pub proposal: Account<'info, Proposal>,
-    pub system_program: Program<'info, System>,
-    pub arcium_program: Program<'info, Arcium>,
-}
 
 #[queue_computation_accounts("reveal_tally", payer)]
 #[derive(Accounts)]
@@ -582,7 +509,7 @@ pub struct CloseProposal<'info> {
     )]
     pub sign_pda_account: Account<'info, ArciumSignerAccount>,
     #[account(address = derive_mxe_pda!())]
-    pub mxe_account: Account<'info, MXEAccount>,
+    pub mxe_account: Box<Account<'info, MXEAccount>>,
     #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
     /// CHECK: checked by arcium program
     pub mempool_account: UncheckedAccount<'info>,
@@ -595,13 +522,13 @@ pub struct CloseProposal<'info> {
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_REVEAL_TALLY))]
     pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
     #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    pub cluster_account: Account<'info, Cluster>,
+    pub cluster_account: Box<Account<'info, Cluster>>,
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
-    pub pool_account: Account<'info, FeePool>,
+    pub pool_account: Box<Account<'info, FeePool>>,
     #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
-    pub clock_account: Account<'info, ClockAccount>,
+    pub clock_account: Box<Account<'info, ClockAccount>>,
     #[account(mut)]
-    pub proposal: Account<'info, Proposal>,
+    pub proposal: Box<Account<'info, Proposal>>,
     pub system_program: Program<'info, System>,
     pub arcium_program: Program<'info, Arcium>,
 }
@@ -617,17 +544,13 @@ pub struct RevealTallyCallback<'info> {
     /// CHECK: checked by arcium program
     pub computation_account: UncheckedAccount<'info>,
     #[account(address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    pub cluster_account: Account<'info, Cluster>,
+    pub cluster_account: Box<Account<'info, Cluster>>,
     #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
     /// CHECK: instructions sysvar
     pub instructions_sysvar: AccountInfo<'info>,
     #[account(mut)]
-    pub proposal: Account<'info, Proposal>,
+    pub proposal: Box<Account<'info, Proposal>>,
 }
-
-// ---------------------------------------------------------------------------
-// Other account structs
-// ---------------------------------------------------------------------------
 
 #[derive(Accounts)]
 pub struct RegisterVoter<'info> {
@@ -668,7 +591,7 @@ pub struct CreateProposal<'info> {
         seeds = [PROPOSAL_SEED, creator.key().as_ref(), &proposal_nonce.to_le_bytes()],
         bump,
     )]
-    pub proposal: Account<'info, Proposal>,
+    pub proposal: Box<Account<'info, Proposal>>,
     pub system_program: Program<'info, System>,
 }
 
@@ -691,7 +614,6 @@ pub struct Proposal {
     pub vote_in_flight: bool,
     pub bump: u8,
 }
-
 impl Proposal {
     pub const MAX_SPACE: usize = 8 + 32 + 8 + (4 + MAX_TITLE_LEN) + (4 + MAX_DESC_LEN) + 8 + 4 + 32 + 16 + 9 + 1 + 1 + 1;
 }
@@ -718,10 +640,6 @@ impl VoterRecord {
     pub const SPACE: usize = 8 + 32 + 32 + 8 + 1;
 }
 
-// ---------------------------------------------------------------------------
-// Enums
-// ---------------------------------------------------------------------------
-
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub enum ProposalStatus {
     Initializing,
@@ -730,58 +648,26 @@ pub enum ProposalStatus {
     Finalized,
 }
 
-// ---------------------------------------------------------------------------
-// Events
-// ---------------------------------------------------------------------------
-
 #[event]
-pub struct ProposalActivated {
-    pub proposal: Pubkey,
-}
-
+pub struct ProposalActivated { pub proposal: Pubkey }
 #[event]
-pub struct VoteCast {
-    pub proposal: Pubkey,
-    pub vote_count: u32,
-}
-
+pub struct VoteCast { pub proposal: Pubkey, vote_count: u32 }
 #[event]
-pub struct ProposalFinalized {
-    pub proposal: Pubkey,
-    pub net_tally: i64,
-    pub passed: bool,
-}
-
-// ---------------------------------------------------------------------------
-// Errors — single enum; arcium requires AbortedComputation + ClusterNotSet
-// ---------------------------------------------------------------------------
+pub struct ProposalFinalized { pub proposal: Pubkey, net_tally: i64, passed: bool }
 
 #[error_code]
 pub enum ErrorCode {
-    #[msg("The computation was aborted")]
-    AbortedComputation,
-    #[msg("MPC cluster not configured")]
-    ClusterNotSet,
-    #[msg("Proposal title exceeds 64 characters")]
-    TitleTooLong,
-    #[msg("Proposal description exceeds 256 characters")]
-    DescriptionTooLong,
-    #[msg("End time must be in the future")]
-    EndTimeInPast,
-    #[msg("Proposal is not in the expected status for this operation")]
-    InvalidProposalStatus,
-    #[msg("Voting period has ended")]
-    ProposalEnded,
-    #[msg("Voting period has not ended yet")]
-    ProposalNotEnded,
-    #[msg("num_votes must be at least 1")]
-    ZeroVotes,
-    #[msg("Quadratic credit cost overflows u64")]
-    CreditOverflow,
-    #[msg("Insufficient voting credits (need num_votes² credits)")]
-    InsufficientCredits,
-    #[msg("A vote computation is already in flight for this proposal")]
-    VoteInFlight,
-    #[msg("Credit top-up cooldown has not elapsed (24 h between top-ups)")]
-    CooldownNotElapsed,
+    #[msg("The computation was aborted")] AbortedComputation,
+    #[msg("MPC cluster not configured")] ClusterNotSet,
+    #[msg("Proposal title exceeds 64 characters")] TitleTooLong,
+    #[msg("Proposal description exceeds 256 characters")] DescriptionTooLong,
+    #[msg("End time must be in the future")] EndTimeInPast,
+    #[msg("Proposal is not in the expected status for this operation")] InvalidProposalStatus,
+    #[msg("Voting period has ended")] ProposalEnded,
+    #[msg("Voting period has not ended yet")] ProposalNotEnded,
+    #[msg("num_votes must be at least 1")] ZeroVotes,
+    #[msg("Quadratic credit cost overflows u64")] CreditOverflow,
+    #[msg("Insufficient voting credits")] InsufficientCredits,
+    #[msg("A vote computation is already in flight")] VoteInFlight,
+    #[msg("Credit top-up cooldown has not elapsed")] CooldownNotElapsed,
 }

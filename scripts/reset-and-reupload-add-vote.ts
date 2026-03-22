@@ -28,7 +28,7 @@ const provider = anchor.getProvider() as anchor.AnchorProvider;
 const program = new anchor.Program(idl as anchor.Idl, provider) as unknown as anchor.Program<PrivateVoting>;
 const arciumProgram = getArciumProgram(provider);
 
-const MXE_PROGRAM_ID = new PublicKey("CLUBgAStu51VNK9BWaDujZYvrM55MAmfq7CLZ3KY3mmD");
+const MXE_PROGRAM_ID = new PublicKey("Aiqd5dMHe1GNrxCpnMZTgcxpmkPN2335ysfCsJgspUSa");
 const MAX_UPLOAD_PER_TX_BYTES = 814;
 const MAX_REALLOC_PER_IX = 10240;
 const MAX_RESIZE_IXS_PER_TX = 18;

@@ -1,5 +1,6 @@
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useWalletModal } from '@solana/wallet-adapter-react-ui'
+import { Button } from './Button'
 
 export function WalletButton() {
   const { publicKey, disconnect, connecting } = useWallet()
@@ -7,9 +8,9 @@ export function WalletButton() {
 
   if (connecting) {
     return (
-      <button className="px-4 py-2 rounded-[14px] border border-doma-blue/30 text-doma-blue text-sm font-medium opacity-70 cursor-not-allowed">
+      <Button variant="secondary" loading disabled>
         Connecting…
-      </button>
+      </Button>
     )
   }
 
@@ -18,12 +19,12 @@ export function WalletButton() {
     const short = `${addr.slice(0, 4)}…${addr.slice(-4)}`
     return (
       <div className="flex items-center gap-2">
-        <span className="font-mono text-xs text-white/50 bg-white/5 border border-white/10 px-3 py-2 rounded-[14px]">
+        <span className="font-mono text-xs text-[#ecedf6] bg-white/5 border border-white/10 px-4 py-2.5 rounded-lg">
           {short}
         </span>
         <button
           onClick={() => disconnect()}
-          className="px-3 py-2 text-xs rounded-[14px] border border-red-800/50 text-red-400 hover:bg-red-900/20 transition-colors"
+          className="px-3 py-2 text-[10px] uppercase tracking-wider font-bold rounded-lg border border-red-500/20 text-red-400 hover:bg-red-500/10 transition-all"
         >
           Disconnect
         </button>
@@ -32,11 +33,11 @@ export function WalletButton() {
   }
 
   return (
-    <button
+    <Button
       onClick={() => setVisible(true)}
-      className="px-5 py-2.5 rounded-[14px] bg-doma-blue hover:bg-white text-doma-dark font-bold text-sm transition-all transform hover:scale-105 shadow-glow-blue"
+      variant="primary"
     >
       Connect Wallet
-    </button>
+    </Button>
   )
 }

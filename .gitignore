@@ -33,3 +33,23 @@ test-ledger/
 deploy/
 .pnp/
 .pnp.js
+*-keypair.json
+**/*-keypair.json
+test_voter.json
+**/test_voter.json
+test-voter.json
+**/test-voter.json
+
+# Temporary / Development
+init_log.txt
+latest_proposals.md
+test-init.ts
+test_register.ts
+patch_polyfill.sh
+polyfill.rs
+scripts/output.txt
+
+# Local Assistant Data
+artifacts/
+.gemini/
+brain/

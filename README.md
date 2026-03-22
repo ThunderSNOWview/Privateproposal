@@ -1,12 +1,12 @@
-# Private Voting — Arcium × Solana
+# Arcium Governance
 
-**Privacy-preserving quadratic governance voting powered by MPC.**
+**Confidential governance with blind MPC execution on Solana.**
 
-Votes are cast and tallied inside encrypted shared state managed by Arcium's MPC cluster. Individual vote directions are never observable — only the final net tally is revealed on-chain, with a correctness proof from the cluster.
+![Arcium Nocturne Dashboard](docs/images/arcium_governance_main_page_1774089214731.png)
 
-[![Live App](https://img.shields.io/badge/Live%20App-private--voting.vercel.app-4AC6FF?style=flat-square)](https://arcium-private-voting.vercel.app/)
+Cast encrypted votes that protect your conviction and eliminate herd bias. Powered by Arcium's decentralized MPC network. 
+# Confidentially Cast. Collectively Powerful.
 
-[![GitHub](https://img.shields.io/badge/GitHub-yourname%2Fprivate--voting-white?style=flat-square&logo=github)](https://github.com/ToanBm/arcium-private-voting)
 
 ---
 
@@ -26,13 +26,20 @@ Arcium's MPC (Multi-Party Computation) cluster holds secret shares of the encryp
 
 ### Quadratic Voting Twist
 
-Each registered voter receives **100 voting credits**. Allocating `N` votes to a proposal costs `N²` credits. This quadratic cost curve:
+Each registered voter receives **100 voting Power**. Allocating `N` votes to a proposal costs `N²` units of Power. This quadratic cost curve:
 
-- Limits extreme concentration of influence (10 votes costs all 100 credits).
+- Limits extreme concentration of influence (10 votes costs all 100 Power).
 - Lets voters signal *intensity* of preference, not just direction.
 - Discourages token-whale dominance without requiring token-weighting.
 
 The quadratic deduction is enforced **on-chain** before the MPC computation runs, so budget integrity is provable without revealing anything inside the circuit.
+
+### **Arcium Nocturne** Design System
+
+The platform features a custom-built **Arcium Nocturne** UI, designed for a premium, low-friction governance experience:
+- **Glassmorphism**: A deep space aesthetic with blurred overlays and glowing violet/blue accents.
+- **Simplified Workflow**: streamlined "Hero" credit management and one-click proposal creation.
+- **Real-time MPC Monitoring**: Visual feedback during encrypted tallying and computation finalization.
 
 ---
 
@@ -72,7 +79,7 @@ The quadratic deduction is enforced **on-chain** before the MPC computation runs
 | Account | PDA Seeds | Purpose |
 |---|---|---|
 | `Proposal` | `[b"proposal", creator, nonce_le_bytes]` | Proposal metadata + encrypted tally |
-| `VoterCredits` | `[b"voter_credits", voter]` | Quadratic voting budget per voter |
+| `VoterCredits` | `[b"voter_credits", voter]` | Quadratic voting budget per voter (Power) |
 | `VoterRecord` | `[b"voter_record", voter, proposal]` | Double-vote prevention |
 
 ---
@@ -92,14 +99,14 @@ The vote direction is encrypted client-side using **x25519 ECDH + RescueCipher**
 
 ## Quadratic Voting Example
 
-| Votes allocated | Credits spent | Credits remaining (from 100) |
+| Votes allocated | Power spent | Power remaining (from 100) |
 |---|---|---|
 | 1 | 1 | 99 |
 | 3 | 9 | 91 |
 | 5 | 25 | 75 |
 | 10 | 100 | 0 |
 
-A voter with 100 credits can cast 10 votes on one proposal, or spread their influence: e.g. 7 votes (49 credits) on one proposal and 7 votes (49 credits) on another (total 98 credits, 2 left over).
+A voter with 100 Power can cast 10 votes on one proposal, or spread their influence: e.g. 7 votes (49 Power) on one proposal and 7 votes (49 Power) on another (total 98 Power, 2 left over).
 
 ---
 
@@ -137,11 +144,17 @@ arcium test
 arcium deploy \
   --cluster-offset 456 \
   --recovery-set-size 5 \
-  --keypair-path ~/.config/solana/id.json \
+  -k ~/.config/solana/id.json \
   --program-keypair target/deploy/private_voting-keypair.json \
   --program-name private_voting \
-  --rpc-url devnet
+  -u devnet
 ```
+
+> [!NOTE]
+> **Arcium v0.9.x Migration Notes**:
+> - Use `-k` instead of `-kp` for the keypair flag.
+> - The `--authority` flag is removed; the MXE authority is now always set to the signer (the keypair provided via `-k`).
+
 
 After deploy, update `Anchor.toml` cluster to `devnet` and run:
 
@@ -154,10 +167,10 @@ arcium test --cluster devnet
 ```bash
 cd app
 npm install
-npm run dev   # → http://localhost:3000
+npm run dev   # → http://localhost:3001
 ```
 
-Connect Phantom or Solflare (set to Devnet), register as a voter, and start creating proposals.
+Connect Phantom or Solflare (set to Devnet), register as a voter, and start creating proposals on the **Arcium Nocturne** dashboard.
 
 ---
 

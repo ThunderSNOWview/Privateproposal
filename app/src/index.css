@@ -1,51 +1,56 @@
-@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&family=Outfit:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  * {
-    box-sizing: border-box;
+  :root {
+    --color-background: #0b0e14;
+    --color-primary: #b6a0ff;
+    --color-primary-dim: #7e51ff;
+    --color-secondary: #00affe;
+    --color-surface: #0b0e14;
+    --color-surface-container: #161a21;
+    --color-surface-higher: #1c2028;
+    --color-on-surface: #ecedf6;
+    --color-on-surface-variant: #a9abb3;
   }
+
   body {
-    background: linear-gradient(180deg, #061F2A 0%, #041822 100%);
-    min-height: 100vh;
-    color: #ffffff;
-    font-family: 'Urbanist', ui-sans-serif, system-ui, sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-on-surface);
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
-  }
-  ::-webkit-scrollbar {
-    width: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: #041822;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: rgba(74, 198, 255, 0.2);
-    border-radius: 3px;
-  }
-  input[type=number]::-webkit-inner-spin-button,
-  input[type=number]::-webkit-outer-spin-button {
-    -webkit-appearance: none;
     margin: 0;
   }
-  input[type=number] {
-    appearance: textfield;
-    -moz-appearance: textfield;
+
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Manrope', sans-serif;
   }
 }
 
-@layer utilities {
-  .bg-doma-card {
-    background: linear-gradient(135deg, rgba(11, 30, 38, 0.8) 0%, rgba(11, 30, 38, 0.4) 100%);
+@layer components {
+  .bg-glass {
+    background: rgba(34, 38, 47, 0.4);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
   }
-}
 
-/* Wallet adapter modal overrides */
-.wallet-adapter-modal-wrapper {
-  background: linear-gradient(135deg, rgba(11, 30, 38, 0.95) 0%, rgba(11, 30, 38, 0.8) 100%) !important;
-  border: 1px solid rgba(248, 253, 255, 0.1) !important;
-  border-radius: 20px !important;
-  backdrop-filter: blur(8px) !important;
+  .shadow-glow-violet {
+    box-shadow: 0 0 20px rgba(182, 160, 255, 0.15);
+  }
+
+  .shadow-glow-blue {
+    box-shadow: 0 0 20px rgba(0, 175, 254, 0.15);
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-br from-[#7e51ff] to-[#b6a0ff] hover:opacity-90 active:scale-95 transition-all text-[#340090] font-bold px-6 py-2.5 rounded-lg shadow-glow-violet;
+  }
+
+  .btn-secondary {
+    @apply bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all text-[#ecedf6] font-medium px-6 py-2.5 rounded-lg backdrop-blur-md;
+  }
 }

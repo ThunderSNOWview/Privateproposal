@@ -9,19 +9,20 @@ import type { ProposalAccount } from '../hooks/useProposals'
 import { getVoterCreditsPda, getVoterRecordPda } from '../lib/pdas'
 import { getMxeAcc, getCompAcc, getClusterAcc, getMempoolAcc, getExecPool, getCompDef, randomOffset } from '../lib/arcium'
 import { encryptVote } from '../lib/encrypt'
+import { Button } from './Button'
 
 interface Props {
   program: VotingProgram
   provider: AnchorProvider
   proposal: ProposalAccount
-  currentCredits: number
+  currentPower: number
   onClose: () => void
   onVoted: () => void
 }
 
 type Step = 'form' | 'encrypting' | 'submitting' | 'waiting_mpc' | 'done' | 'error'
 
-export function VoteModal({ program, provider, proposal, currentCredits, onClose, onVoted }: Props) {
+export function VoteModal({ program, provider, proposal, currentPower, onClose, onVoted }: Props) {
   const { publicKey } = useWallet()
   const [direction, setDirection] = useState<0 | 1>(1)
   const [numVotes, setNumVotes] = useState(1)
@@ -29,7 +30,7 @@ export function VoteModal({ program, provider, proposal, currentCredits, onClose
   const [error, setError] = useState('')
 
   const cost = numVotes * numVotes
-  const creditsAfter = currentCredits - cost
+  const creditsAfter = currentPower - cost
   const canVote = step === 'form' && creditsAfter >= 0 && numVotes >= 1 && numVotes <= 10
 
   async function handleVote() {
@@ -90,147 +91,139 @@ export function VoteModal({ program, provider, proposal, currentCredits, onClose
 
   const STEP_LABELS: Record<Step, string> = {
     form: '',
-    encrypting: 'Encrypting your vote with x25519 + RescueCipher…',
-    submitting: 'Submitting transaction…',
-    waiting_mpc: 'Arcium MPC is tallying your encrypted vote…',
-    done: 'Vote recorded!',
+    encrypting: 'Generating x25519 Ciphertext',
+    submitting: 'Committing to Blockchain',
+    waiting_mpc: 'Decentralized MPC Tallying',
+    done: 'VOTE FINALIZED',
     error: '',
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="w-full max-w-md mx-4 bg-[linear-gradient(135deg,rgba(11,30,38,0.95)_0%,rgba(11,30,38,0.85)_100%)] border border-white/10 rounded-[20px] shadow-2xl backdrop-blur-xl">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0b0e14]/90 backdrop-blur-xl animate-fade-in">
+      <div className="w-full max-w-lg mx-4 bg-[#161a21] border border-white/10 rounded-[32px] shadow-[0_32px_64px_rgba(0,0,0,0.5)] overflow-hidden relative">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#00affe] to-[#b6a0ff]" />
+
         {/* Header */}
-        <div className="px-6 py-4 border-b border-white/10">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-base font-semibold text-white leading-snug">{proposal.account.title}</h2>
-              <p className="text-xs text-white/40 mt-1">Cast an encrypted vote — direction is private</p>
+        <div className="px-8 pt-10 pb-6">
+           <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <h2 className="font-display text-2xl font-black text-white line-clamp-2 leading-tight pr-8">{proposal.account.title}</h2>
+              <p className="text-xs font-bold text-[#a9abb3] uppercase tracking-[0.2em] opacity-60">Private Quadratic Vote</p>
             </div>
             {(step === 'form' || step === 'error') && (
-              <button onClick={onClose} className="text-white/30 hover:text-white transition-colors shrink-0">✕</button>
+              <button onClick={onClose} className="w-10 h-10 rounded-full hover:bg-white/5 transition-colors flex items-center justify-center text-2xl text-[#a9abb3] shrink-0">✕</button>
             )}
-          </div>
+           </div>
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 space-y-5">
+        <div className="px-8 py-4 space-y-8">
           {(step === 'form' || step === 'error') && (
             <>
               {/* Direction */}
-              <div>
-                <p className="text-sm font-medium text-white/80 mb-2">Vote direction <span className="text-xs text-doma-blue/70 font-normal">(encrypted on-chain)</span></p>
-                <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3">
+                <label className="text-[10px] font-bold text-[#a9abb3] uppercase tracking-widest px-1">Vote Direction</label>
+                <div className="grid grid-cols-2 gap-4">
                   <button
                     onClick={() => setDirection(1)}
-                    className={`py-3 rounded-[14px] text-sm font-semibold border-2 transition-all ${
+                    className={`py-6 rounded-2xl flex flex-col items-center gap-2 border-2 transition-all ${
                       direction === 1
-                        ? 'bg-emerald-900/30 border-emerald-500 text-emerald-300 shadow-glow-green'
-                        : 'bg-white/5 border-white/10 text-white/40 hover:border-emerald-700/50'
+                        ? 'bg-green-500/10 border-green-500/40 text-green-400 shadow-[0_0_20px_rgba(34,197,94,0.15)]'
+                        : 'bg-white/2 border-white/5 text-[#a9abb3] hover:border-white/20'
                     }`}
                   >
-                    👍 For
+                    <span className="text-2xl">👍</span>
+                    <span className="font-black text-xs uppercase tracking-widest">Support</span>
                   </button>
                   <button
                     onClick={() => setDirection(0)}
-                    className={`py-3 rounded-[14px] text-sm font-semibold border-2 transition-all ${
+                    className={`py-6 rounded-2xl flex flex-col items-center gap-2 border-2 transition-all ${
                       direction === 0
-                        ? 'bg-red-900/30 border-red-500 text-red-300'
-                        : 'bg-white/5 border-white/10 text-white/40 hover:border-red-700/50'
+                        ? 'bg-red-500/10 border-red-500/40 text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.15)]'
+                        : 'bg-white/2 border-white/5 text-[#a9abb3] hover:border-white/20'
                     }`}
                   >
-                    👎 Against
+                    <span className="text-2xl">👎</span>
+                    <span className="font-black text-xs uppercase tracking-widest">Oppose</span>
                   </button>
                 </div>
               </div>
 
-              {/* Votes slider */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-white/80">Number of votes</p>
-                  <span className="font-mono text-lg font-bold text-white">{numVotes}</span>
+              {/* Slider */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between px-1">
+                  <label className="text-[10px] font-bold text-[#a9abb3] uppercase tracking-widest">Vote Intensity</label>
+                  <span className="font-display font-black text-2xl text-white">{numVotes}</span>
                 </div>
                 <input
                   type="range"
                   min={1}
-                  max={Math.min(10, Math.floor(Math.sqrt(currentCredits)))}
+                  max={Math.min(10, Math.floor(Math.sqrt(currentPower)))}
                   value={numVotes}
                   onChange={e => setNumVotes(Number(e.target.value))}
-                  className="w-full accent-[#4AC6FF]"
+                  className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#b6a0ff]"
                 />
-                <div className="flex justify-between text-xs text-white/30 mt-1">
-                  <span>1</span>
-                  <span>{Math.min(10, Math.floor(Math.sqrt(currentCredits)))}</span>
-                </div>
               </div>
 
-              {/* Cost breakdown */}
-              <div className="bg-doma-blue/5 rounded-[14px] border border-white/10 p-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-white/50">Quadratic cost</span>
-                  <span className="font-mono text-white">{numVotes}² = <span className="text-doma-blue font-semibold">{cost} credits</span></span>
+              {/* Math card */}
+              <div className="p-6 rounded-2xl bg-[#0b0e14] border border-white/5 space-y-4">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-[#a9abb3] font-bold uppercase tracking-widest">Quadratic Cost</span>
+                  <span className="text-white font-black">{numVotes}² = <span className="text-[#b6a0ff]">{cost} Power</span></span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-white/50">Current credits</span>
-                  <span className="font-mono text-white">{currentCredits}</span>
+                <div className="h-px bg-white/5" />
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-[#a9abb3] font-bold uppercase tracking-widest">Wallet Balance</span>
+                  <span className="text-[#a9abb3] font-bold">{currentPower} Power</span>
                 </div>
-                <div className="border-t border-white/10 pt-2 flex justify-between text-sm font-medium">
-                  <span className="text-white/70">Remaining after vote</span>
-                  <span className={`font-mono font-bold ${creditsAfter >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                <div className="flex justify-between items-center pt-1">
+                  <span className="text-sm font-black text-white">Remaining</span>
+                  <span className={`font-display font-black text-lg ${creditsAfter >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {creditsAfter}
                   </span>
                 </div>
               </div>
 
-              {/* Lock icon explanation */}
-              <div className="flex items-start gap-2.5 text-xs text-white/40">
-                <span className="text-base leading-none mt-0.5">🔒</span>
-                <span>Your vote direction is encrypted with your ephemeral x25519 key. Only the Arcium MPC cluster can decrypt and tally it — no one can see how you voted.</span>
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-[#00affe]/5 border border-[#00affe]/10">
+                <span className="text-lg">🔐</span>
+                <p className="text-[10px] font-medium leading-relaxed text-[#00affe]/80 uppercase tracking-wider">
+                  Direction is encrypted with ephemeral keys. Only the Arcium Cluster can decrypt and tally.
+                </p>
               </div>
 
               {step === 'error' && (
-                <div className="rounded-[14px] bg-red-900/20 border border-red-800/40 px-3 py-2.5 text-sm text-red-400">
-                  {error}
+                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold text-center">
+                  Error: {error}
                 </div>
               )}
             </>
           )}
 
           {step !== 'form' && step !== 'error' && (
-            <div className="py-6 flex flex-col items-center gap-4">
+            <div className="py-20 flex flex-col items-center gap-8 animate-slide-up">
               {step === 'done' ? (
-                <div className="w-14 h-14 rounded-full bg-emerald-900/30 border border-emerald-700/50 flex items-center justify-center text-2xl">
+                <div className="w-24 h-24 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center text-5xl shadow-[0_0_40px_rgba(34,197,94,0.2)]">
                   ✓
                 </div>
               ) : (
                 <div className="relative">
-                  <div className="w-14 h-14 rounded-full border-2 border-doma-blue/20 border-t-doma-blue animate-spin" />
-                  <span className="absolute inset-0 flex items-center justify-center text-lg">🔒</span>
+                  <div className="w-24 h-24 rounded-full border-4 border-[#00affe]/20 border-t-[#00affe] animate-spin" />
+                  <span className="absolute inset-0 flex items-center justify-center text-3xl">🔒</span>
                 </div>
               )}
-              <p className="text-sm text-white/70 text-center">{STEP_LABELS[step]}</p>
-              {step === 'waiting_mpc' && (
-                <p className="text-xs text-white/40 text-center max-w-xs">
-                  MPC computation in progress (~15–30s). The tally remains encrypted throughout.
-                </p>
-              )}
+              <div className="text-center space-y-2">
+                <p className="font-display text-2xl font-black text-white uppercase tracking-tight">{STEP_LABELS[step]}</p>
+                <p className="text-xs font-bold text-[#a9abb3] opacity-60 tracking-[0.3em] uppercase">Arcium Vault Protocol V1</p>
+              </div>
             </div>
           )}
         </div>
 
         {/* Footer */}
         {(step === 'form' || step === 'error') && (
-          <div className="px-6 pb-5 flex justify-end gap-3">
-            <button onClick={onClose} className="px-4 py-2.5 rounded-[14px] text-sm text-white/40 hover:text-white transition-colors">
-              Cancel
-            </button>
-            <button
-              onClick={handleVote}
-              disabled={!canVote}
-              className="px-5 py-2.5 rounded-[14px] text-sm font-bold bg-doma-blue hover:bg-white text-doma-dark transition-all transform hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
-            >
-              Cast Encrypted Vote
-            </button>
+          <div className="px-8 pb-12 pt-4 flex items-center justify-end gap-4">
+            <Button variant="ghost" onClick={onClose} className="uppercase tracking-widest text-[10px]">Abandon</Button>
+            <Button onClick={handleVote} disabled={!canVote} className="text-lg px-8">Confirm Vote</Button>
           </div>
         )}
       </div>

@@ -16,6 +16,7 @@ export function useProgram() {
     const provider = new AnchorProvider(connection, wallet, { commitment: COMMITMENT })
     // Anchor 0.32: Program(idl, provider) — programId is taken from idl.address
     const program = new Program(idl as any, provider) as VotingProgram
+    console.log("DEBUG: Active Arcium Program ID:", program.programId.toBase58());
     return { program, provider }
   }, [wallet, connection])
 }

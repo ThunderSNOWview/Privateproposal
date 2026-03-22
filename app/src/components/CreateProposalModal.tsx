@@ -7,6 +7,7 @@ import type { VotingProgram } from '../hooks/useProgram'
 import { getProposalPda } from '../lib/pdas'
 import { getMxeAcc, getCompAcc, getClusterAcc, getMempoolAcc, getExecPool, getCompDef, randomOffset } from '../lib/arcium'
 import { AnchorProvider } from '@coral-xyz/anchor'
+import { Button } from './Button'
 
 interface Props {
   program: VotingProgram
@@ -46,7 +47,6 @@ export function CreateProposalModal({ program, provider, onClose, onCreated }: P
         })
         .rpc({ commitment: 'confirmed', skipPreflight: true })
 
-      // Queue MPC to zero-initialize the encrypted tally
       setStep('zeroing')
       const computationOffset = randomOffset()
 
@@ -64,8 +64,6 @@ export function CreateProposalModal({ program, provider, onClose, onCreated }: P
         })
         .rpc({ commitment: 'confirmed', skipPreflight: true })
 
-      // Don't block on MPC finalization — nodes may be slow.
-      // Proposal is Initializing on-chain; callback will flip it to Active.
       setStep('done')
       setTimeout(() => {
         onCreated()
@@ -83,79 +81,70 @@ export function CreateProposalModal({ program, provider, onClose, onCreated }: P
 
   const STEP_LABELS: Record<Step, string> = {
     form: '',
-    creating: 'Creating proposal on-chain…',
-    zeroing: 'Submitting MPC computation…',
-    waiting_mpc: 'Waiting for MPC network to initialize encrypted tally…',
-    done: 'Proposal is now active!',
+    creating: 'Securing proposal on-chain…',
+    zeroing: 'Initializing MPC Tally…',
+    waiting_mpc: 'Computing encrypted zero…',
+    done: 'Proposal is now ACTIVE',
     error: '',
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="w-full max-w-lg mx-4 bg-[linear-gradient(135deg,rgba(11,30,38,0.95)_0%,rgba(11,30,38,0.85)_100%)] border border-white/10 rounded-[20px] shadow-2xl backdrop-blur-xl">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0b0e14]/90 backdrop-blur-xl animate-fade-in">
+      <div className="w-full max-w-xl mx-4 bg-[#161a21] border border-white/10 rounded-[32px] shadow-[0_32px_64px_rgba(0,0,0,0.5)] overflow-hidden relative">
+         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#7e51ff] to-[#b6a0ff]" />
+         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+        <div className="px-8 pt-10 pb-6 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-white">Create Proposal</h2>
-            <p className="text-xs text-white/40 mt-0.5">Votes are tallied privately using Arcium MPC</p>
+            <h2 className="font-display text-3xl font-black text-white">New Proposal</h2>
+            <p className="text-sm font-medium text-[#a9abb3] mt-1">Submit your initiative to the Arcium collective.</p>
           </div>
-          {step === 'form' || step === 'error' ? (
-            <button
-              onClick={onClose}
-              className="text-white/30 hover:text-white transition-colors text-xl leading-none"
-            >
-              ✕
-            </button>
-          ) : null}
+          {(step === 'form' || step === 'error') && (
+            <button onClick={onClose} className="w-10 h-10 rounded-full hover:bg-white/5 transition-colors flex items-center justify-center text-2xl text-[#a9abb3]">✕</button>
+          )}
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-8 py-4 space-y-6">
           {(step === 'form' || step === 'error') && (
             <>
-              <div>
-                <label className="block text-sm font-medium text-white/80 mb-1.5">
-                  Title <span className="text-white/30 font-normal">({titleLen}/64)</span>
-                </label>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-[#a9abb3] uppercase tracking-widest px-1">Proposal Title</label>
                 <input
-                  className="w-full bg-white/5 border border-white/10 rounded-[14px] px-3 py-2.5 text-white placeholder-white/25 text-sm focus:outline-none focus:border-doma-blue/50 focus:ring-1 focus:ring-doma-blue/20 transition-colors"
-                  placeholder="e.g. Should we fund public infrastructure?"
+                  className="w-full bg-[#0b0e14] border border-white/5 rounded-2xl px-5 py-4 text-white placeholder-white/20 text-lg font-bold focus:outline-none focus:border-[#b6a0ff]/40 focus:ring-4 focus:ring-[#b6a0ff]/5 transition-all"
+                  placeholder="Enter a concise title"
                   maxLength={64}
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-white/80 mb-1.5">
-                  Description <span className="text-white/30 font-normal">({descLen}/256)</span>
-                </label>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-[#a9abb3] uppercase tracking-widest px-1">Context & Description</label>
                 <textarea
-                  className="w-full bg-white/5 border border-white/10 rounded-[14px] px-3 py-2.5 text-white placeholder-white/25 text-sm focus:outline-none focus:border-doma-blue/50 focus:ring-1 focus:ring-doma-blue/20 transition-colors resize-none"
-                  placeholder="Describe your proposal…"
-                  rows={3}
+                  className="w-full bg-[#0b0e14] border border-white/5 rounded-2xl px-5 py-4 text-[#ecedf6] placeholder-white/20 text-sm font-medium focus:outline-none focus:border-[#b6a0ff]/40 focus:ring-4 focus:ring-[#b6a0ff]/5 transition-all resize-none"
+                  placeholder="Detail the proposed changes..."
+                  rows={4}
                   maxLength={256}
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-white/80 mb-1.5">
-                  Voting period
-                </label>
-                <div className="flex items-center gap-3">
-                  {([300, 1, 24, 72, 168] as const).map(h => {
-                    const secs = h === 300 ? 300 : h * 3600
-                    const label = h === 300 ? '5m' : h < 24 ? `${h}h` : `${h / 24}d`
+              <div className="space-y-3">
+                <label className="text-[10px] font-bold text-[#a9abb3] uppercase tracking-widest px-1">Voting Duration</label>
+                <div className="grid grid-cols-4 gap-3">
+                  {([1, 24, 72, 168] as const).map(h => {
+                    const secs = h * 3600
+                    const label = h < 24 ? `${h}h` : `${h / 24}d`
                     return (
                       <button
                         key={h}
                         onClick={() => setDurationSecs(secs)}
-                        className={`flex-1 py-2 rounded-[14px] text-sm font-medium border transition-all ${
+                        className={`py-3 rounded-xl text-xs font-black border transition-all ${
                           durationSecs === secs
-                            ? 'bg-doma-blue border-doma-blue text-doma-dark font-bold'
-                            : 'bg-white/5 border-white/10 text-white/50 hover:border-doma-blue/30 hover:text-white'
+                            ? 'bg-[#b6a0ff]/10 border-[#b6a0ff]/40 text-[#b6a0ff]'
+                            : 'bg-white/2 border-white/5 text-[#a9abb3] hover:border-white/20 hover:text-white'
                         }`}
                       >
                         {label}
@@ -166,48 +155,35 @@ export function CreateProposalModal({ program, provider, onClose, onCreated }: P
               </div>
 
               {step === 'error' && (
-                <div className="rounded-[14px] bg-red-900/20 border border-red-800/40 px-3 py-2.5 text-sm text-red-400">
-                  {error}
+                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold text-center">
+                  Error: {error}
                 </div>
               )}
             </>
           )}
 
           {step !== 'form' && step !== 'error' && (
-            <div className="py-6 flex flex-col items-center gap-4">
+            <div className="py-16 flex flex-col items-center gap-6 animate-slide-up">
               {step === 'done' ? (
-                <div className="w-14 h-14 rounded-full bg-emerald-900/30 border border-emerald-700/50 flex items-center justify-center text-2xl">
+                <div className="w-20 h-20 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center text-4xl shadow-[0_0_30px_rgba(34,197,94,0.2)]">
                   ✓
                 </div>
               ) : (
-                <div className="w-14 h-14 rounded-full border-2 border-doma-blue/20 border-t-doma-blue animate-spin" />
+                <div className="w-20 h-20 rounded-full border-4 border-[#b6a0ff]/20 border-t-[#b6a0ff] animate-spin" />
               )}
-              <p className="text-sm text-white/70 text-center">{STEP_LABELS[step]}</p>
-              {step === 'waiting_mpc' && (
-                <p className="text-xs text-white/40 text-center">
-                  The Arcium MPC network is computing an encrypted zero — this takes ~15–30s
-                </p>
-              )}
+              <div className="text-center">
+                <p className="font-display text-xl font-bold text-white">{STEP_LABELS[step]}</p>
+                <p className="text-xs font-medium text-[#a9abb3] mt-2 opacity-60 uppercase tracking-widest">MPC Encryption Layer Active</p>
+              </div>
             </div>
           )}
         </div>
 
         {/* Footer */}
         {(step === 'form' || step === 'error') && (
-          <div className="px-6 pb-5 flex justify-end gap-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-[14px] text-sm text-white/40 hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleCreate}
-              disabled={!canSubmit}
-              className="px-5 py-2.5 rounded-[14px] text-sm font-bold bg-doma-blue hover:bg-white text-doma-dark transition-all transform hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
-            >
-              Create Proposal
-            </button>
+          <div className="px-8 pb-10 pt-4 flex items-center justify-end gap-4">
+            <Button variant="ghost" onClick={onClose} className="uppercase tracking-widest text-[10px]">Back</Button>
+            <Button onClick={handleCreate} disabled={!canSubmit} className="text-lg px-8">Create Initiative</Button>
           </div>
         )}
       </div>
